@@ -9,6 +9,9 @@ import kotlinx.coroutines.Dispatchers.Main
 
 
 class MainActivity : AppCompatActivity() {
+
+    val JOB_TIMEOUT = 2100L
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -33,16 +36,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private suspend fun fakeApiRequest() {
-        logThread("fakeApiRequest")
-        val result1 = getResult1FromApi() // wait until job is done
-        if ( result1.equals("Result #1")) {
-            setTextOnMainThread("Got $result1")
-            val result2 = getResult2FromApi() // wait until job is done
-            
-            if (result2.equals("Result #2")) setTextOnMainThread("Got $result2")
-            else                setTextOnMainThread("Couldn't get Result #2")
-        } else {
-            setTextOnMainThread("Couldn't get Result #1")
+        withContext(IO) {
+            val job = withTimeoutOrNull(JOB_TIMEOUT) {
+                val result1 = getResult1FromApi()
+                setTextOnMainThread("got result #1")
+
+                val result2 = getResult2FromApi()
+                setTextOnMainThread("got result #2")
+            }
+
+            if (job == null) {
+                val cancelMessage = "Cancelling job .... Job took longer than $JOB_TIMEOUT ms"
+                setTextOnMainThread(cancelMessage)
+            }
         }
     }
 
